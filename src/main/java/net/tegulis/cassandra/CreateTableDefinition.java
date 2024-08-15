@@ -233,7 +233,7 @@ public class CreateTableDefinition {
 				.reduce(Integer::max)
 				.orElse(0);
 		StringBuilder sb = new StringBuilder();
-		sb.append(" CREATE TABLE ").append(getFullTableName()).append(" {");
+		sb.append("CREATE TABLE ").append(getFullTableName()).append(" {");
 		sb.append(String.format("\n  PARTITION COUNT      = %" + padding + "s", partitionCount));
 		sb.append(String.format("\n  PARTITION SIZE       = %" + padding + "s bytes", partitionSize));
 		sb.append(String.format("\n  TOTAL SIZE           = %" + padding + "s bytes", totalSize));
