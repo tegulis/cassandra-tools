@@ -29,15 +29,6 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
 }
 
-tasks.generateGrammarSource {
-    // Workaround for Lexer/Parser ordering. See: https://github.com/antlr/antlr4/issues/2335#issuecomment-886043863
-    val file = File(projectDir, "build/generated-src/antlr/main/cql")
-    doFirst {
-        file.mkdirs()
-    }
-    arguments = arguments + listOf("-lib", file.absolutePath, "-visitor", "-long-messages")
-}
-
 tasks.test {
     useJUnitPlatform()
 }
