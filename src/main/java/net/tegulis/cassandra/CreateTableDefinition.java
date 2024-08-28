@@ -13,11 +13,35 @@ public class CreateTableDefinition {
 	public static class Column {
 
 		public enum ColumnType {
-			PARTITION, CLUSTERING, REGULAR, STATIC
+			PARTITION,
+			CLUSTERING,
+			REGULAR,
+			STATIC
 		}
 
 		public enum DataType {
-			ASCII, BIGINT(8), BLOB, BOOLEAN(1), COUNTER(8), DATE(4), DECIMAL, DOUBLE(8), DURATION, FLOAT(4), INET, INT(4), SMALLINT(2), TEXT, TIME(8), TIMESTAMP(8), TIMEUUID(16), TINYINT(1), UUID(16), VARCHAR, VARINT;
+			ASCII,
+			BIGINT(8),
+			BLOB,
+			BOOLEAN(1),
+			COUNTER(8),
+			DATE(4),
+			DECIMAL,
+			DOUBLE(8),
+			DURATION,
+			FLOAT(4),
+			INET,
+			INT(4),
+			SMALLINT(2),
+			TEXT,
+			TIME(8),
+			TIMESTAMP(8),
+			TIMEUUID(16),
+			TINYINT(1),
+			UNKNOWN,
+			UUID(16),
+			VARCHAR,
+			VARINT;
 
 			public final int size;
 
@@ -144,9 +168,9 @@ public class CreateTableDefinition {
 
 	public long getPartitionRowCount() throws IllegalArgumentException {
 		return getColumnsByType(Column.ColumnType.CLUSTERING).stream()
-				.map(Column::getCardinality)
-				.reduce((a, b) -> a * b)
-				.orElse(1L);
+			.map(Column::getCardinality)
+			.reduce((a, b) -> a * b)
+			.orElse(1L);
 	}
 
 	public String getFormattedPartitionRowCount() {
@@ -180,22 +204,22 @@ public class CreateTableDefinition {
 		// Formula from https://cassandra.apache.org/doc/stable/cassandra/data_modeling/data_modeling_refining.html
 		//   St = sizeOf(ck) + sizeOf(cs) + Nr * (ksizeOf(cr) + sizeOf(cc)) + Nv * sizeOf(tavg)
 		long ck = getColumnsByType(Column.ColumnType.PARTITION).stream()
-				.map(Column::getSize)
-				.reduce(Long::sum)
-				.orElse(0L);
+			.map(Column::getSize)
+			.reduce(Long::sum)
+			.orElse(0L);
 		long cs = getColumnsByType(Column.ColumnType.STATIC).stream()
-				.map(Column::getSize)
-				.reduce(Long::sum)
-				.orElse(0L);
+			.map(Column::getSize)
+			.reduce(Long::sum)
+			.orElse(0L);
 		long Nr = getPartitionRowCount();
 		long cr = getColumnsByType(Column.ColumnType.REGULAR).stream()
-				.map(Column::getSize)
-				.reduce(Long::sum)
-				.orElse(0L);
+			.map(Column::getSize)
+			.reduce(Long::sum)
+			.orElse(0L);
 		long cc = getColumnsByType(Column.ColumnType.CLUSTERING).stream()
-				.map(Column::getSize)
-				.reduce(Long::sum)
-				.orElse(0L);
+			.map(Column::getSize)
+			.reduce(Long::sum)
+			.orElse(0L);
 		long Nv = getPartitionCellCount();
 		long tavg = 8L;
 		return ck + cs + Nr * (cr + cc) + Nv * tavg;
@@ -229,9 +253,9 @@ public class CreateTableDefinition {
 		String partitionRowCount = getFormattedPartitionRowCount();
 		String partitionCellCount = getFormattedPartitionCellCount();
 		int padding = Stream.of(partitionCount, partitionSize, totalSize, partitionRowCount, partitionCellCount)
-				.map(String::length)
-				.reduce(Integer::max)
-				.orElse(0);
+			.map(String::length)
+			.reduce(Integer::max)
+			.orElse(0);
 		StringBuilder sb = new StringBuilder();
 		sb.append("CREATE TABLE ").append(getFullTableName()).append(" {");
 		sb.append(String.format("\n  PARTITION COUNT      = %" + padding + "s", partitionCount));
@@ -241,34 +265,34 @@ public class CreateTableDefinition {
 		sb.append(String.format("\n  CELLS PER PARTITION  = %" + padding + "s (limit 2 billion)", partitionCellCount));
 		sb.append("\n  COLUMNS:");
 		int namePadding = columns.stream()
-				.map(column -> column.name.length())
-				.reduce(Integer::max)
-				.orElse(0);
+			.map(column -> column.name.length())
+			.reduce(Integer::max)
+			.orElse(0);
 		int dataTypePadding = columns.stream()
-				.map(column -> column.dataType.toString().length())
-				.reduce(Integer::max)
-				.orElse(0);
+			.map(column -> column.dataType.toString().length())
+			.reduce(Integer::max)
+			.orElse(0);
 		int typePadding = columns.stream()
-				.map(column -> column.columnType.toString().length())
-				.reduce(Integer::max)
-				.orElse(0);
+			.map(column -> column.columnType.toString().length())
+			.reduce(Integer::max)
+			.orElse(0);
 		int cardinalityPadding = columns.stream()
-				.map(column -> column.getFormattedCardinality().length())
-				.reduce(Integer::max)
-				.orElse(0);
+			.map(column -> column.getFormattedCardinality().length())
+			.reduce(Integer::max)
+			.orElse(0);
 		int sizePadding = columns.stream()
-				.map(column -> column.getFormattedSize().length())
-				.reduce(Integer::max)
-				.orElse(0);
+			.map(column -> column.getFormattedSize().length())
+			.reduce(Integer::max)
+			.orElse(0);
 		for (Column column : columns) {
 			String cardinality = column.getFormattedCardinality();
 			String size = column.getFormattedSize();
 			sb.append(("\n    %-" + namePadding + "s"
-							+ " %-" + dataTypePadding + "s"
-							+ " %-" + typePadding + "s"
-							+ " cardinality = %" + cardinalityPadding + "s"
-							+ ", size = %" + sizePadding + "s"
-					).formatted(column.name, column.dataType, column.columnType, cardinality, size));
+				+ " %-" + dataTypePadding + "s"
+				+ " %-" + typePadding + "s"
+				+ " cardinality = %" + cardinalityPadding + "s"
+				+ ", size = %" + sizePadding + "s"
+			).formatted(column.name, column.dataType, column.columnType, cardinality, size));
 		}
 		sb.append("\n}");
 		return sb.toString();

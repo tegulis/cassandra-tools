@@ -100,4 +100,18 @@ public class CreateTable {
 		);
 	}
 
+	@Test
+	public void createTableWithCustomDataType() {
+		GrammarTests.parseGrammar(
+			"""
+				CREATE TABLE t (
+					id int PRIMARY KEY,
+					car MyCarType,
+					house HOUSE,
+					other other_type
+				);
+				"""
+		);
+	}
+
 }

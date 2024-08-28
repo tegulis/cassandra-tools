@@ -46,35 +46,48 @@ public class CreateTableListener extends CQLBaseListener {
 
 	@Override
 	public void enterCreateTableStatement(CQLParser.CreateTableStatementContext createTableStatementContext) {
-		Objects.requireNonNull(createTableStatementContext.tableName());
-		String keyspace = createTableStatementContext.tableName().keyspaceName() == null ? "" : createTableStatementContext.tableName().keyspaceName().getText();
-		String tableName = createTableStatementContext.tableName().name().getText();
-		int firstLineNumber = createTableStatementContext.start.getLine();
-		CreateTableDefinition createTableDefinition = new CreateTableDefinition(keyspace, tableName, firstLineNumber);
-		Map<String, ColumnType> columnTypes = getColumnTypesFromPrimaryKeyDefinition(createTableStatementContext.primaryKey());
-		List<ColumnDefinitionContext> columnDefinitions = createTableStatementContext.columnDefinition();
-		for (ColumnDefinitionContext columnDefinition : columnDefinitions) {
-			String columnName = columnDefinition.columnName().getText();
-			DataType dataType = DataType.valueOf(columnDefinition.cqlType().getText().toUpperCase());
-			ColumnType columnType = ColumnType.REGULAR;
-			if (columnDefinition.STATIC() != null) {
-				columnType = ColumnType.STATIC;
+		try {
+			Objects.requireNonNull(createTableStatementContext.tableName());
+			String keyspace = "";
+			if (createTableStatementContext.tableName().keyspaceName() != null) {
+				keyspace = createTableStatementContext.tableName().keyspaceName().getText();
 			}
-			if (columnTypes.containsKey(columnName)) {
-				columnType = columnTypes.get(columnName);
+			String tableName = createTableStatementContext.tableName().name().getText();
+			int firstLineNumber = createTableStatementContext.start.getLine();
+			CreateTableDefinition createTableDefinition = new CreateTableDefinition(keyspace, tableName, firstLineNumber);
+			Map<String, ColumnType> columnTypes = getColumnTypesFromPrimaryKeyDefinition(createTableStatementContext.primaryKey());
+			List<ColumnDefinitionContext> columnDefinitions = createTableStatementContext.columnDefinition();
+			for (ColumnDefinitionContext columnDefinition : columnDefinitions) {
+				String columnName = columnDefinition.columnName().getText();
+				DataType dataType = DataType.UNKNOWN;
+				String dataTypeString = columnDefinition.cqlType().getText();
+				try {
+					dataType = DataType.valueOf(dataTypeString.toUpperCase());
+				} catch (IllegalArgumentException exception) {
+					System.err.println("Unknown data type: " + dataTypeString + ". Will use UNKNOWN for compatibility.");
+				}
+				ColumnType columnType = ColumnType.REGULAR;
+				if (columnDefinition.STATIC() != null) {
+					columnType = ColumnType.STATIC;
+				}
+				if (columnTypes.containsKey(columnName)) {
+					columnType = columnTypes.get(columnName);
+				}
+				CreateTableDefinition.Column column = new CreateTableDefinition.Column(columnName, dataType, columnType);
+				int columnDefinitionLine = columnDefinition.getStart().getLine();
+				List<Token> hiddenTokens = tokenStream.getHiddenTokensToRight(columnDefinition.getStop().getTokenIndex() + 1, Token.HIDDEN_CHANNEL);
+				hiddenTokens.stream()
+					.filter(token -> token.getLine() == columnDefinitionLine)
+					.map(Token::getText)
+					.filter(text -> text.startsWith("//"))
+					.map(String::trim)
+					.forEach(column::tryEnrichFromComment);
+				createTableDefinition.columns.add(column);
 			}
-			CreateTableDefinition.Column column = new CreateTableDefinition.Column(columnName, dataType, columnType);
-			int columnDefinitionLine = columnDefinition.getStart().getLine();
-			List<Token> hiddenTokens = tokenStream.getHiddenTokensToRight(columnDefinition.getStop().getTokenIndex() + 1, Token.HIDDEN_CHANNEL);
-			hiddenTokens.stream()
-				.filter(token -> token.getLine() == columnDefinitionLine)
-				.map(Token::getText)
-				.filter(text -> text.startsWith("//"))
-				.map(String::trim)
-				.forEach(column::tryEnrichFromComment);
-			createTableDefinition.columns.add(column);
+			createTableDefinitions.add(createTableDefinition);
+		} catch (Exception exception) {
+			System.err.println("Failed to parse create table statement: " + exception.getMessage());
 		}
-		createTableDefinitions.add(createTableDefinition);
 	}
 
 }
