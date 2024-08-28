@@ -6,6 +6,15 @@
 
 grammar CQL;
 
+// Cassandra CQL grammar written to be as close as possible to the official definition at
+// https://cassandra.apache.org/doc/stable/cassandra/cql/index.html
+// Differences:
+//   - Tweaks around identifiers, names, keywords, etc. because of the complicated nature in CQL
+//     (see reserved keywords and quoted identifiers)
+//   - Tweaks in recursion since ANTLR does not have recursion like CQL
+//   - Names are in lowerCamelCase to follow Java style
+//   - Extra nodes in the parse tree to identify the parts of a CQL command (eg. renamePair)
+
 @header {
 	package cql;
 }
@@ -15,6 +24,7 @@ options {
 	language = Java;
 }
 
+// Ignored whitespace and comments
 WHITESPACE			: [ \t\r\n]+ -> channel (HIDDEN);
 MULTI_LINE_COMMENT	: '/*' .*? '*/' -> channel (HIDDEN);
 LINE_COMMENT		: ('--' | '#' | '//') ~[\r\n]* ('\r'? '\n' | EOF) -> channel (HIDDEN);
@@ -48,6 +58,7 @@ OPERATOR_GT				: '>';
 OPERATOR_LTE			: '<=';
 OPERATOR_GTE			: '>=';
 
+// Fragments
 fragment DIGIT			: [0-9];
 fragment HEX_DIGIT		: [0-9A-F];
 fragment HEX_DIGIT_4	: HEX_DIGIT HEX_DIGIT HEX_DIGIT HEX_DIGIT;
@@ -339,15 +350,15 @@ userDefinedType	: udtName;
 udtName			: (keyspaceName '.')? identifier;
 createTypeStatement:
 	CREATE TYPE (IF NOT EXISTS)? udtName '(' fieldDefinition (',' fieldDefinition)* ')';
-fieldDefinition			: identifier cqlType;
-udtLiteral				: '{' fieldValuePair (',' fieldValuePair)* '}';
-fieldValuePair			: identifier ':' term;
-alter_type_statement	: ALTER TYPE (IF EXISTS)? udtName alterTypeModification;
+fieldDefinition		: identifier cqlType;
+udtLiteral			: '{' fieldValuePair (',' fieldValuePair)* '}';
+fieldValuePair		: identifier ':' term;
+alterTypeStatement	: ALTER TYPE (IF EXISTS)? udtName alterTypeModification;
 alterTypeModification:
 	ADD (IF NOT EXISTS)? fieldDefinition
 	| RENAME (IF EXISTS)? renamePair (AND renamePair)*;
 renamePair			: identifier TO identifier;
-drop_type_statement	: DROP TYPE (IF EXISTS)? udtName;
+dropTypeStatement	: DROP TYPE (IF EXISTS)? udtName;
 
 // Data types: Tuples
 // https://cassandra.apache.org/doc/stable/cassandra/cql/types.html#tuples
@@ -366,7 +377,7 @@ name			: UNQUOTED_NAME | QUOTED_NAME | identifier;
 UNQUOTED_NAME	: [A-Z_0-9]+;
 QUOTED_NAME		: '"' UNQUOTED_NAME '"';
 columnName		: identifier;
-// Options are renamed, as 'options' is a reserved keyword in ANTRL
+// Options are renamed to optionAssignments, as 'options' is a reserved keyword in ANTRL
 optionAssignments	: optionAssignment (AND optionAssignment)*;
 optionAssignment	: optionName '=' (identifier | constant | mapLiteral);
 optionName			: identifier;
@@ -384,11 +395,11 @@ statement:
 	| udtStatement;
 //        | trigger_statement;
 ddlStatement:
-	//use_statement
-	//        | create_keyspace_statement
+	useStatement
+	| createKeyspaceStatement
 	//        | alter_keyspace_statement
 	//        | drop_keyspace_statement
-	createTableStatement; //        | truncate_statement
+	| createTableStatement; //        | truncate_statement
 //	dml_statement : select_statement
 //    		| insert_statement
 //    		| update_statement
@@ -415,9 +426,17 @@ ddlStatement:
 //    		| drop_function_statement
 //    		| create_aggregate_statement
 //    		| drop_aggregate_statement;
-udtStatement: createTypeStatement | alter_type_statement | drop_type_statement;
+udtStatement: createTypeStatement | alterTypeStatement | dropTypeStatement;
 //trigger_statement : create_trigger_statement
 //		| drop_trigger_statement;
+
+// USE
+// https://cassandra.apache.org/doc/stable/cassandra/cql/ddl.html#use-statement
+useStatement: USE keyspaceName;
+
+// CREATE KEYSPACE
+// https://cassandra.apache.org/doc/stable/cassandra/cql/ddl.html#create-keyspace-statement
+createKeyspaceStatement: CREATE KEYSPACE (IF NOT EXISTS)? keyspaceName WITH optionAssignments;
 
 // CREATE TABLE
 // https://cassandra.apache.org/doc/stable/cassandra/cql/ddl.html#create-table-statement
