@@ -112,6 +112,16 @@ public class CreateTable {
 				);
 				"""
 		);
+		GrammarTests.parseGrammar(
+			"""
+				CREATE TABLE t (
+					id int PRIMARY KEY,
+					car MyCarType,
+					house map<text, frozen<HOUSE>>,
+					other other_type
+				);
+				"""
+		);
 	}
 
 }

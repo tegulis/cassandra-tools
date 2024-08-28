@@ -154,6 +154,7 @@ FINALFUNC	: 'FINALFUNC';
 FLOAT		: 'FLOAT';
 FUNCTION	: 'FUNCTION';
 FUNCTIONS	: 'FUNCTIONS';
+FROZEN		: 'FROZEN';
 INET		: 'INET';
 INITCOND	: 'INITCOND';
 INPUT		: 'INPUT';
@@ -308,7 +309,15 @@ bindMarker	: '?' | ':' identifier;
 
 // Data types
 // https://cassandra.apache.org/doc/stable/cassandra/cql/types.html
-cqlType: nativeType | collectionType | userDefinedType | tupleType | customType;
+cqlType:
+	nativeType							# nativeCqlType
+	| collectionType					# collectionCqlType
+	| FROZEN '<' collectionType '>'		# frozenCollectionCqlType
+	| userDefinedType					# userDefinedCqlType
+	| FROZEN '<' userDefinedType '>'	# frozenUserDefinedCqlType
+	| tupleType							# tupleCqlType
+	| FROZEN '<' tupleType '>'			# frozenTupleCqlType
+	| customType						# customCqlType;
 nativeType:
 	ASCII
 	| BIGINT
